@@ -55,3 +55,13 @@ func Test_Update(t *testing.T) {
 		t.Errorf("Key foo should exist!")
 	}
 }
+
+func Test_UpdateImmediately(t *testing.T) {
+	lc := NewImmediateLocalCopy(10*time.Millisecond, func(lc *LocalCopy) {
+		lc.Set("foo", "bar")
+	})
+
+	if _, found := lc.Get("foo"); !found {
+		t.Errorf("Key foo should exist!")
+	}
+}

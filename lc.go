@@ -26,9 +26,8 @@ func (lc *LocalCopy) Remove(key string) {
 	lc.data.Remove(key)
 }
 
-func NewLocalCopy(interval time.Duration, updateFunc func(*LocalCopy)) *LocalCopy {
-	lc := &LocalCopy{data: cmap.New(), interval: interval, updateFunc: updateFunc}
-	lc.ticker = time.NewTicker(interval)
+func (lc *LocalCopy) start() {
+	lc.ticker = time.NewTicker(lc.interval)
 	lc.quit = make(chan struct{})
 	go func() {
 		for {
@@ -41,5 +40,16 @@ func NewLocalCopy(interval time.Duration, updateFunc func(*LocalCopy)) *LocalCop
 			}
 		}
 	}()
+}
+
+func NewLocalCopy(interval time.Duration, updateFunc func(*LocalCopy)) *LocalCopy {
+	lc := &LocalCopy{data: cmap.New(), interval: interval, updateFunc: updateFunc}
+	lc.start()
+	return lc
+}
+func NewImmediateLocalCopy(interval time.Duration, updateFunc func(*LocalCopy)) *LocalCopy {
+	lc := &LocalCopy{data: cmap.New(), interval: interval, updateFunc: updateFunc}
+	lc.updateFunc(lc)
+	lc.start()
 	return lc
 }

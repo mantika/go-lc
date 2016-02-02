@@ -1,50 +1,78 @@
 package lc
 
 import (
+	"sync"
 	"time"
-
-	"github.com/streamrail/concurrent-map"
 )
 
-type LocalCopy struct {
-	data       cmap.ConcurrentMap
-	interval   time.Duration
-	updateFunc func(*LocalCopy)
-	ticker     *time.Ticker
+type localCopy struct {
+	data     map[string]interface{}
+	interval time.Duration
+	fillFunc func(*Handler)
+	ticker   *time.Ticker
+	lock     sync.RWMutex
 }
 
-func (lc *LocalCopy) Get(key string) (interface{}, bool) {
-	return lc.data.Get(key)
+type Handler struct {
+	lc *localCopy
 }
 
-func (lc *LocalCopy) Set(key string, value interface{}) {
-	lc.data.Set(key, value)
+func (h *Handler) Get(key string) (interface{}, bool) {
+	i, o := h.lc.data[key]
+	return i, o
+}
+func (h *Handler) Set(key string, value interface{}) {
+	h.lc.data[key] = value
+}
+func (h *Handler) Clean() {
+	h.lc.data = map[string]interface{}{}
 }
 
-func (lc *LocalCopy) Remove(key string) {
-	lc.data.Remove(key)
+func (lc *localCopy) Get(key string) (interface{}, bool) {
+	lc.lock.RLock()
+	i, o := lc.data[key]
+	lc.lock.RUnlock()
+	return i, o
 }
 
-func (lc *LocalCopy) start() {
+func (lc *localCopy) Set(key string, value interface{}) {
+	lc.lock.Lock()
+	lc.data[key] = value
+	lc.lock.Unlock()
+}
+
+func (lc *localCopy) Remove(key string) {
+	lc.lock.Lock()
+	delete(lc.data, key)
+	lc.lock.Unlock()
+}
+
+func (lc *localCopy) start() {
 	lc.ticker = time.NewTicker(lc.interval)
 	go func() {
 		for {
 			select {
 			case <-lc.ticker.C:
-				lc.updateFunc(lc)
+				lc.fill()
 			}
 		}
 	}()
 }
 
-func NewLocalCopy(interval time.Duration, updateFunc func(*LocalCopy)) *LocalCopy {
-	lc := &LocalCopy{data: cmap.New(), interval: interval, updateFunc: updateFunc}
+func (lc *localCopy) fill() {
+	lc.lock.Lock()
+	lc.fillFunc(&Handler{lc: lc})
+	lc.lock.Unlock()
+}
+
+func NewLocalCopy(interval time.Duration, fillFunc func(*Handler)) *localCopy {
+	lc := &localCopy{data: map[string]interface{}{}, interval: interval, fillFunc: fillFunc}
 	lc.start()
 	return lc
 }
-func NewImmediateLocalCopy(interval time.Duration, updateFunc func(*LocalCopy)) *LocalCopy {
-	lc := &LocalCopy{data: cmap.New(), interval: interval, updateFunc: updateFunc}
-	lc.updateFunc(lc)
+func NewImmediateLocalCopy(interval time.Duration, fillFunc func(*Handler)) *localCopy {
+	lc := &localCopy{data: map[string]interface{}{}, interval: interval, fillFunc: fillFunc}
+	lc.fill()
 	lc.start()
 	return lc
 }

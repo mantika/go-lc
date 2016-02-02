@@ -10,7 +10,6 @@ type LocalCopy struct {
 	data       cmap.ConcurrentMap
 	interval   time.Duration
 	updateFunc func(*LocalCopy)
-	quit       chan struct{}
 	ticker     *time.Ticker
 }
 
@@ -28,15 +27,11 @@ func (lc *LocalCopy) Remove(key string) {
 
 func (lc *LocalCopy) start() {
 	lc.ticker = time.NewTicker(lc.interval)
-	lc.quit = make(chan struct{})
 	go func() {
 		for {
 			select {
 			case <-lc.ticker.C:
 				lc.updateFunc(lc)
-			case <-lc.quit:
-				lc.ticker.Stop()
-				return
 			}
 		}
 	}()

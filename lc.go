@@ -53,13 +53,13 @@ func (lc *LocalCopy) start() {
 		for {
 			select {
 			case <-lc.ticker.C:
-				lc.fill()
+				lc.Fill()
 			}
 		}
 	}()
 }
 
-func (lc *LocalCopy) fill() {
+func (lc *LocalCopy) Fill() {
 	lc.lock.Lock()
 	lc.fillFunc(&Handler{lc: lc})
 	lc.lock.Unlock()
@@ -72,7 +72,7 @@ func NewLocalCopy(interval time.Duration, fillFunc func(*Handler)) *LocalCopy {
 }
 func NewImmediateLocalCopy(interval time.Duration, fillFunc func(*Handler)) *LocalCopy {
 	lc := &LocalCopy{data: map[string]interface{}{}, interval: interval, fillFunc: fillFunc}
-	lc.fill()
+	lc.Fill()
 	lc.start()
 	return lc
 }

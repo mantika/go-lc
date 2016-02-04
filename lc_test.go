@@ -65,3 +65,19 @@ func Test_FillImmediately(t *testing.T) {
 		t.Errorf("Key foo should exist!")
 	}
 }
+
+func Test_FillOnDemand(t *testing.T) {
+	lc := NewLocalCopy(1*time.Hour, func(h *Handler) {
+		h.Set("foo", "bar")
+	})
+
+	if _, found := lc.Get("foo"); found {
+		t.Errorf("Key foo should not exist!")
+	}
+
+	lc.Fill()
+
+	if _, found := lc.Get("foo"); !found {
+		t.Errorf("Key foo should exist!")
+	}
+}
